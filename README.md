@@ -8,7 +8,7 @@ This capstone serves as the culmination of the **Intelligent System Development*
 1. **Tool Integration (`lab/core.py`):** Consuming external APIs without hardcoded keys (Week 3).
 2. **Deterministic Control & Bounded Loops (`lab/travel.py`):** Enforcing calculations and iteration limits in code rather than prompts (Weeks 5–6).
 3. **Safety Guardrails & HITL (`lab/support.py`):** Preventing irreversible operational errors and requiring human sign-off (Weeks 5 & 7).
-4. **Persistent State & Local RAG (`lab/memory.py`):** Multi-session memory retention via SQLite and document retrieval (Weeks 2 & 6).
+4. **Persistent State & Local RAG (`lab/memory.py`):** Multi-session memory retention via SQLite and document retrieval (Weeks 2 & 6), over a knowledge base of at least 10 places in Japan that you research and verify.
 5. **OpenCode Multi-Agent Integration (`.opencode/`):** One `orchestrator` agent routes requests to four subagents (weather, travel, support, memory). Agents act only through the CLI below.
 
 ### Layout
@@ -16,7 +16,8 @@ This capstone serves as the culmination of the **Intelligent System Development*
 .opencode/agents/      orchestrator (primary) + weather, travel, support, memory (subagents)
 .opencode/skills/      order-management, product-inquiry, review-analysis  (<name>/SKILL.md)
 AGENTS.md              project rules OpenCode reads in every session
-knowledge/             local documents for RAG (English + Japanese)
+knowledge/             local documents for RAG (English + Japanese), incl. places_japan.md (Task 4.3)
+eval/                  place_queries.json: your search evaluation questions
 lab/                   Python package behind the CLI (your tasks are here)
 tests/                 autograding tests (offline: the weather API is faked)
 ```
@@ -43,6 +44,7 @@ python -m lab memory --user s01 --scope travel set food.diet vegetarian --eviden
 python -m lab memory --user s01 --scope travel list
 python -m lab memory --user s01 --scope travel forget food.diet
 python -m lab search "Can I cancel a shipped order?"
+python -m lab search-eval                         # hit@1 / hit@3 on eval/place_queries.json
 ```
 Every command prints JSON. Exit codes: `0` ok, `1` refused or not found, `2` usage error. Memory is stored in `data/memory.sqlite3` (override with `LAB_DB_PATH`).
 
@@ -55,7 +57,7 @@ Every command prints JSON. Exit codes: `0` ok, `1` refused or not found, `2` usa
 1. **ツール連携 (`lab/core.py`):** 外部APIの呼び出しとスキーマ変換（第3回）
 2. **決定的制御とループ上限 (`lab/travel.py`):** LLMの計算ミスを防ぐコード側での算術処理と無限ループ防止（第5回・第6回）
 3. **安全ガードレールとHITL (`lab/support.py`):** 不可逆な操作の防止と人間承認ゲート（第5回・第7回）
-4. **永続メモリとローカルRAG (`lab/memory.py`):** SQLiteを用いた状態永続化と検索拡張生成（第2回・第6回）
+4. **永続メモリとローカルRAG (`lab/memory.py`):** SQLiteを用いた状態永続化と検索拡張生成（第2回・第6回）。自分で調べて確認した日本の観光地10か所以上の知識ベースを作成します。
 5. **OpenCode マルチエージェント統合 (`.opencode/`):** `orchestrator` エージェントが4つのサブエージェント（weather, travel, support, memory）に処理を振り分けます。エージェントは上記の CLI だけを使って操作します。
 
 ### テスト・実行手順

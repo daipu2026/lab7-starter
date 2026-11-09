@@ -3,6 +3,7 @@ Lab 7 capstone tests (offline: the Open-Meteo API is mocked).
 第7週 最終課題テスト（Open-Meteo API はモック化、ネットワーク不要）
 """
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -10,12 +11,14 @@ import pytest
 import lab.core as core
 from lab.__main__ import main
 from lab.core import describe_weather_code, fetch_weather
-from lab.memory import (forget_preference, get_preference_details, get_preferences, load_knowledge,
-                        search_knowledge, set_preference, simple_keyword_rag)
+from lab.memory import (REQUIRED_PLACE_FIELDS, forget_preference, get_preference_details, get_preferences,
+                        load_knowledge, parse_places, search_knowledge, set_preference, simple_keyword_rag)
 from lab.support import cancel_order, lookup_order, reset_orders
 from lab.travel import compute_budget_summary, run_bounded_review
 
 ROOT = Path(__file__).resolve().parent.parent
+# Fixed copies of the seed documents: search tests must not depend on what students add to knowledge/
+FIXTURE_KNOWLEDGE = str(Path(__file__).resolve().parent / "fixtures" / "knowledge")
 
 
 @pytest.fixture(autouse=True)
@@ -266,7 +269,7 @@ class TestRag:
 
     def test_knowledge_folder_is_loaded(self):
         chunks = load_knowledge()
-        assert {c["source"] for c in chunks} >= {"return_policy.md", "travel_guidelines.md"}
+        assert {c["source"] for c in chunks} >= {"return_policy.md", "travel_guidelines.md", "places_japan.md"}
 
     @pytest.mark.parametrize("query,source,snippet", [
         ("Can I cancel a shipped order?", "return_policy.md", "Shipped"),
@@ -274,8 +277,82 @@ class TestRag:
         ("出荷済みの注文はキャンセルできますか", "return_policy.md", "出荷済み"),
     ])
     def test_search_knowledge(self, query, source, snippet):
-        top = search_knowledge(query, top_k=1)[0]
+        top = search_knowledge(query, top_k=1, knowledge_dir=FIXTURE_KNOWLEDGE)[0]
         assert top["source"] == source and snippet in top["text"]
+
+
+# ===========================================================================
+# Task 4.3: Places knowledge base / 観光地ナレッジベース
+# ===========================================================================
+CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]")
+MIN_PLACES = 10
+
+
+@pytest.fixture(scope="module")
+def places():
+    return parse_places()
+
+
+class TestPlaces:
+    def test_file_has_at_least_10_places(self, places):
+        assert (ROOT / "knowledge" / "places_japan.md").exists(), "Create knowledge/places_japan.md"
+        assert len(places) >= MIN_PLACES, f"Found {len(places)} places; at least {MIN_PLACES} are required."
+
+    def test_place_names_are_unique(self, places):
+        assert places, "No places found in knowledge/places_japan.md"
+        names = [p["english_name"].lower() for p in places]
+        assert len(names) == len(set(names)), "Each place must appear only once."
+
+    def test_headings_are_bilingual(self, places):
+        assert places, "No places found in knowledge/places_japan.md"
+        problems = []
+        for p in places:
+            if not re.search(r"[A-Za-z]", p["english_name"]):
+                problems.append(f"{p['heading']}: English name missing before '('")
+            if not CJK_RE.search(p["japanese_name"]):
+                problems.append(f"{p['heading']}: Japanese name missing inside the first (...)")
+            if not re.search(r"[都道府県]", p["heading"]):
+                problems.append(f"{p['heading']}: prefecture in Japanese (…県/府/都/道) missing")
+        assert not problems, "\n".join(problems)
+
+    def test_required_fields_present(self, places):
+        assert places, "No places found in knowledge/places_japan.md"
+        problems = [f"{p['english_name']}: missing '{f}'" for p in places
+                    for f in REQUIRED_PLACE_FIELDS if not p["fields"].get(f)]
+        assert not problems, "\n".join(problems)
+
+    def test_sources_have_url_and_checked_date(self, places):
+        assert places, "No places found in knowledge/places_japan.md"
+        problems = [p["english_name"] for p in places
+                    if not re.search(r"https?://\S+", p["fields"].get("source", ""))
+                    or not re.search(r"\d{4}-\d{2}", p["fields"].get("source", ""))]
+        assert not problems, f"Source needs a URL and a checked date (YYYY-MM): {problems}"
+
+    @pytest.mark.parametrize("name_key", ["english_name", "japanese_name"])
+    def test_every_place_is_findable_by_name(self, places, name_key):
+        assert places, "No places found"
+        misses = []
+        for p in places:
+            titles = [r["title"] for r in search_knowledge(p[name_key], top_k=3)]
+            if p["heading"] not in titles:
+                misses.append(p[name_key])
+        assert not misses, f"Searching these names does not return their own entry (top 3): {misses}"
+
+
+class TestPlaceQueries:
+    def test_evaluation_queries(self, places):
+        path = ROOT / "eval" / "place_queries.json"
+        cases = json.loads(path.read_text(encoding="utf-8"))
+        assert len(cases) >= 5, "Write at least 5 evaluation queries."
+        assert sum(bool(CJK_RE.search(c["query"])) for c in cases) >= 2, "At least 2 queries must be in Japanese."
+        names = {p["english_name"] for p in places}
+        unknown = [c["expected"] for c in cases if c["expected"] not in names]
+        assert not unknown, f"'expected' must be the English name of one of your places: {unknown}"
+
+    def test_search_eval_command(self, capsys, places):
+        code = main(["search-eval"])
+        report = json.loads(capsys.readouterr().out)
+        assert code == 0 and report["queries"] >= 5 and "hit@1" in report
 
 
 # ===========================================================================

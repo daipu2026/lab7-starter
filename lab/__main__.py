@@ -122,6 +122,28 @@ def cmd_search(args) -> int:
     return out({"query": args.query, "results": search_knowledge(args.query, top_k=args.top_k)})
 
 
+def cmd_search_eval(args) -> int:
+    """Run eval/place_queries.json through the search and report hit@1 and hit@k."""
+    path = PROJECT_ROOT / "eval" / "place_queries.json"
+    try:
+        cases = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return out({"error": f"Cannot read {path.name}: {e}"}, 2)
+    rows, hit1, hitk = [], 0, 0
+    for case in cases:
+        results = search_knowledge(case["query"], top_k=args.top_k)
+        titles = [r["title"] for r in results]
+        found = [i for i, t in enumerate(titles) if t.startswith(case["expected"])]
+        rank = found[0] + 1 if found else None
+        hit1 += rank == 1
+        hitk += rank is not None
+        rows.append({"query": case["query"], "expected": case["expected"], "rank": rank,
+                     "top_results": titles})
+    n = len(cases) or 1
+    return out({"queries": len(cases), "hit@1": round(hit1 / n, 2), f"hit@{args.top_k}": round(hitk / n, 2),
+                "misses": [r for r in rows if r["rank"] is None], "results": rows})
+
+
 # --------------------------------------------------------------------------- parser
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m lab", description="OpenCode Lab CLI (all output is JSON)")
@@ -165,6 +187,10 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("query")
     q.add_argument("--top-k", type=int, default=2)
     q.set_defaults(func=cmd_search)
+
+    ev = sub.add_parser("search-eval", help="Evaluate search on eval/place_queries.json")
+    ev.add_argument("--top-k", type=int, default=3)
+    ev.set_defaults(func=cmd_search_eval)
     return p
 
 

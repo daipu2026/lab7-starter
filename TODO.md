@@ -63,6 +63,28 @@ This capstone integrates the core principles covered throughout Lectures 1 to 6 
   - `simple_keyword_rag`: score by **distinct** shared tokens, return the `top_k` best (ties keep original order).
   - The provided `search_knowledge()` then searches the `knowledge/` folder with your functions.
   - *Verification:* `pytest -k Rag`
+- [ ] **Task 4.3: Build a Knowledge Base of at Least 10 Places in Japan**
+  - Add **at least 10 places** to `knowledge/places_japan.md`, one section per place, in exactly this format:
+    ```markdown
+    ## Chuson-ji (中尊寺) — Hiraizumi, Iwate (岩手県平泉町)
+    - Category: temple / 寺, UNESCO World Heritage
+    - Highlights: Konjikido golden hall (金色堂); quiet in the early morning
+    - Access: JR Hiraizumi Station, then local bus
+    - Cost: admission about 1,000 yen (estimate)
+    - Best season: autumn leaves (紅葉)
+    - Source: https://... (checked 2026-11)
+    ```
+  - **Heading:** English name, then the Japanese name in the first `( )`, then the city and prefecture in both scripts. The search only matches words that appear in your text, so write important keywords in both languages (temple / 寺, hot spring / 温泉).
+  - **All six bullets are required.** `Source` needs a URL you actually opened and the month you checked it (`YYYY-MM`). Prefer official sites.
+  - **Do not trust generated facts.** If an AI tool drafts an entry, check every opening time, price and access route against the source. Mark any price you could not confirm as `(estimate)`; this is what `is_estimate` in Task 2.1 is for.
+  - **Write in your own words.** Short bullets; do not paste text from guidebooks or websites.
+  - **Recommended:** include at least 2 places in Tohoku (東北).
+  - **Evaluate your search:** write at least 5 questions (at least 2 in Japanese) in `eval/place_queries.json`, each with the English name of the place you expect:
+    ```json
+    [{"query": "岩手の静かなお寺", "expected": "Chuson-ji"}]
+    ```
+    Run `python -m lab search-eval` and report the hit@1 / hit@3 scores in `SUBMISSION.md`. **Misses are fine**: explain *why* the keyword search missed them. Accuracy is not graded; your explanation is.
+  - *Verification:* `pytest -k "Places or PlaceQueries"`
 
 ---
 

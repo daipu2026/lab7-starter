@@ -20,3 +20,8 @@
 
 ### 5. OpenCode Demo (OpenCode デモ記録)
 *Paste the transcript (or screenshots) for TODO Tasks 5.2–5.4: one request per subagent, the guarded cancellation, and your misbehaviour test with what happened:*
+
+### 6. Places Knowledge Base & Search Evaluation (知識ベースと検索評価)
+*Paste the output summary of `python -m lab search-eval` (hit@1, hit@3). For every missed query, explain why the keyword search missed it and how you could fix it (better keywords in the entry, or a different retrieval method):*
+
+*How did you verify your facts? Name one fact an AI tool gave you that turned out to be wrong or outdated, if any:*

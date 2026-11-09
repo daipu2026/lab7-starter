@@ -157,3 +157,41 @@ def search_knowledge(query: str, top_k: int = 2, knowledge_dir: Optional[str] = 
     texts = [f"{c['title']}: {c['text']}" for c in chunks]
     hits = simple_keyword_rag(query, texts, top_k=top_k)
     return [chunks[texts.index(h)] for h in hits]
+
+
+# ----------------------------------------------------------------- provided: places file (Task 4.3)
+PLACES_FILE = KNOWLEDGE_DIR / "places_japan.md"
+REQUIRED_PLACE_FIELDS = ["category", "highlights", "access", "cost", "best season", "source"]
+_HEADING_RE = re.compile(r"^##\s+(.+?)\s*$")
+_FIELD_RE = re.compile(r"^\s*[-*]\s*([^:：]+)[:：]\s*(.*)$")
+
+
+def parse_places(path: Optional[str] = None) -> List[Dict[str, object]]:
+    """
+    Parse knowledge/places_japan.md. Each place starts with a heading like
+        ## Chuson-ji (中尊寺) — Hiraizumi, Iwate (岩手県平泉町)
+    followed by "- Field: value" bullets. Returns one dict per place:
+        {"heading", "english_name", "japanese_name", "fields": {lowercase field: value}}
+    """
+    file = Path(path) if path else PLACES_FILE
+    if not file.exists():
+        return []
+    places: List[Dict[str, object]] = []
+    current: Optional[Dict[str, object]] = None
+    for line in file.read_text(encoding="utf-8").splitlines():
+        m = _HEADING_RE.match(line)
+        if m:
+            heading = m.group(1)
+            jp = re.search(r"[(（]([^)）]+)[)）]", heading)
+            current = {
+                "heading": heading,
+                "english_name": re.split(r"\s*[(（]", heading, maxsplit=1)[0].strip(),
+                "japanese_name": jp.group(1).strip() if jp else "",
+                "fields": {},
+            }
+            places.append(current)
+            continue
+        f = _FIELD_RE.match(line)
+        if current is not None and f:
+            current["fields"][f.group(1).strip().lower()] = f.group(2).strip()
+    return places
